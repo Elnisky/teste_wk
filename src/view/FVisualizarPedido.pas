@@ -1,0 +1,145 @@
+unit FVisualizarPedido;
+
+interface
+
+uses
+  Controller.Cliente,
+  Controller.Pedido,
+  Controller.Produto,
+  Data.DB,
+  Datasnap.DBClient,
+  Entidades.Cliente,
+  Entidades.ItemPedido,
+  Entidades.Pedido,
+  Entidades.Produto,
+  System.Classes,
+  System.Generics.Collections,
+  System.StrUtils,
+  System.SysUtils,
+  System.UITypes,
+  System.Variants,
+  Vcl.Controls,
+  Vcl.DBGrids,
+  Vcl.Dialogs,
+  Vcl.ExtCtrls,
+  Vcl.Forms,
+  Vcl.Graphics,
+  Vcl.Grids,
+  Vcl.Mask,
+  Vcl.Menus,
+  Vcl.StdCtrls,
+  Winapi.Messages,
+  Winapi.Windows;
+
+type
+  TfrmVisualizarPedido = class(TForm)
+    edtNumPedido: TLabeledEdit;
+    edtCliente: TLabeledEdit;
+    edtData: TLabeledEdit;
+    edtTotal: TLabeledEdit;
+    dsItens: TDataSource;
+    grdPedidos: TDBGrid;
+    cdsItens: TClientDataSet;
+    cdsItensCodProduto: TIntegerField;
+    cdsItensDescricaoProduto: TStringField;
+    cdsItensQuantidade: TIntegerField;
+    cdsItensVlrUnitario: TFloatField;
+    cdsItensVlrTotal: TFloatField;
+    procedure FormShow(Sender: TObject);
+    procedure FormCreate(Sender: TObject);
+    procedure FormClose(Sender: TObject; var Action: TCloseAction);
+  private
+    FPedido : TPedido;
+    FListaProdutos: TObjectList<TProduto>;
+    FItens: TObjectList<TItemPedido>;
+    FClienteController : TClienteController;
+    FPedidoController : TPedidoController;
+    FProdutoController : TProdutoController;
+    function NomeCliente(CodCliente: Integer): string;
+    procedure CarregarItens;
+    { Private declarations }
+  public
+    property Pedido: TPedido write FPedido;
+    { Public declarations }
+  end;
+
+var
+  frmVisualizarPedido: TfrmVisualizarPedido;
+
+implementation
+
+{$R *.dfm}
+
+procedure TfrmVisualizarPedido.CarregarItens;
+var
+  Produto: TProduto;
+begin
+  cdsItens.Close;
+  cdsItens.FieldDefs.Clear;
+  cdsItens.FieldDefs.Add('CodProduto', ftInteger);
+  cdsItens.FieldDefs.Add('DescricaoProduto', ftString, 100);
+  cdsItens.FieldDefs.Add('Quantidade', ftInteger);
+  cdsItens.FieldDefs.Add('VlrUnitario', ftFloat);
+  cdsItens.FieldDefs.Add('VlrTotal', ftFloat);
+  cdsItens.CreateDataSet;
+
+  for var Item in FItens do
+  begin
+    cdsItens.Append;
+
+    for Produto in FListaProdutos do
+      if Produto.Codigo = Item.ProCodigo then
+      begin
+        cdsItens.FieldByName('DescricaoProduto').AsString := Produto.Descricao;
+        Break;
+      end;
+    cdsItens.FieldByName('CodProduto').AsInteger := Item.ProCodigo;
+    cdsItens.FieldByName('Quantidade').AsInteger := Item.Quantidade;
+    cdsItens.FieldByName('VlrUnitario').AsFloat := Item.VlrUnitario;
+    cdsItens.FieldByName('VlrTotal').AsFloat := Item.VlrTotal;
+    cdsItens.Post;
+  end;
+end;
+
+
+procedure TfrmVisualizarPedido.FormClose(Sender: TObject; var Action: TCloseAction);
+begin
+  FClienteController.Free;
+  FPedidoController.Free;
+  FProdutoController.Free;
+  FListaProdutos.Free;
+  FItens.Free;
+end;
+
+procedure TfrmVisualizarPedido.FormCreate(Sender: TObject);
+begin
+  FClienteController := TClienteController.Create;
+  FPedidoController := TPedidoController.Create;
+  FProdutoController := TProdutoController.Create;
+end;
+
+procedure TfrmVisualizarPedido.FormShow(Sender: TObject);
+begin
+  edtNumPedido.Text := FPedido.NumPedido.ToString;
+  edtCliente.Text := NomeCliente(FPedido.CliCodigo);
+  edtData.Text := DateToStr(FPedido.DataEmissao);
+  edtTotal.Text := FormatFloat('0.00', FPedido.VlrTotal);
+  FItens := FPedidoController.ListarItensDoPedido(FPedido.NumPedido);
+  FListaProdutos := FProdutoController.ListarProdutos;
+  CarregarItens;
+end;
+
+function TfrmVisualizarPedido.NomeCliente(CodCliente: Integer): string;
+begin
+  Result := '';
+  var ListaClientes := FClienteController.ListarClientes;
+  try
+    for var Cliente in ListaClientes do
+      if Cliente.Codigo = CodCliente then
+        Result := Cliente.Nome;
+  finally
+    ListaClientes.Free;
+  end;
+end;
+
+end.

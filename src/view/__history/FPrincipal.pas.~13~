@@ -1,0 +1,132 @@
+unit FPrincipal;
+
+interface
+
+uses
+  Controller.Cliente,
+  Controller.Pedido,
+  Data.DB,
+  Datasnap.DBClient,
+  Entidades.Cliente,
+  Entidades.Pedido,
+  System.Classes,
+  System.Generics.Collections,
+  System.StrUtils,
+  System.SysUtils,
+  System.UITypes,
+  System.Variants,
+  Vcl.Controls,
+  Vcl.DBGrids,
+  Vcl.Dialogs,
+  Vcl.ExtCtrls,
+  Vcl.Forms,
+  Vcl.Graphics,
+  Vcl.Grids,
+  Vcl.Mask,
+  Vcl.Menus,
+  Vcl.StdCtrls,
+  Winapi.Messages,
+  Winapi.Windows;
+
+type
+  TfrmPrincipal = class(TForm)
+    grdPedidos: TDBGrid;
+    pnlPrincipal: TPanel;
+    mnuPrincipal: TMainMenu;
+    mnuCadastros: TMenuItem;
+    mnuCadastroClientes: TMenuItem;
+    mnuCadastroProdutos: TMenuItem;
+    dsPedidos: TDataSource;
+    cdsPedidos: TClientDataSet;
+    cdsPedidosNumPedido: TIntegerField;
+    cdsPedidosCliente: TStringField;
+    cdsPedidosDataEmissao: TDateTimeField;
+    cdsPedidosVlrTotal: TFloatField;
+    procedure FormCreate(Sender: TObject);
+    procedure FormClose(Sender: TObject; var Action: TCloseAction);
+  private
+    FPedidoController: TPedidoController;
+    FClienteController: TClienteController;
+    FListaPedidos: TObjectList<TPedido>;
+    FListaClientes: TObjectList<TCliente>;
+    procedure AtualizarGrid;
+    function PedidoSelecionado: TPedido;
+    function NomeCliente(CodCliente: Integer): string;
+
+    { Private declarations }
+  public
+    { Public declarations }
+  end;
+
+var
+  frmPrincipal: TfrmPrincipal;
+
+implementation
+
+{$R *.dfm}
+
+{ TForm1 }
+
+procedure TfrmPrincipal.AtualizarGrid;
+begin
+  cdsPedidos.Close;
+  cdsPedidos.FieldDefs.Clear;
+  cdsPedidos.FieldDefs.Add('NumPedido', ftInteger);
+  cdsPedidos.FieldDefs.Add('Cliente', ftString, 100);
+  cdsPedidos.FieldDefs.Add('DataEmissao', ftDateTime);
+  cdsPedidos.FieldDefs.Add('VlrTotal', ftFloat);
+  cdsPedidos.CreateDataSet;
+
+  FListaPedidos := FPedidoController.ListarPedidos;
+  FListaClientes := FClienteController.ListarClientes;
+
+  for var Pedido in FListaPedidos do
+  begin
+    cdsPedidos.Append;
+    cdsPedidos.FieldByName('NumPedido').AsInteger := Pedido.NumPedido;
+    cdsPedidos.FieldByName('Cliente').AsString := NomeCliente(Pedido.CliCodigo);
+    cdsPedidos.FieldByName('DataEmissao').AsDateTime := Pedido.DataEmissao;
+    cdsPedidos.FieldByName('VlrTotal').AsFloat := Pedido.VlrTotal;
+    cdsPedidos.Post;
+  end;
+end;
+
+procedure TfrmPrincipal.FormClose(Sender: TObject; var Action: TCloseAction);
+begin
+  if Assigned(FListaPedidos) then
+    FListaPedidos.Free;
+
+  if Assigned(FListaClientes) then
+    FListaClientes.Free;
+end;
+
+procedure TfrmPrincipal.FormCreate(Sender: TObject);
+begin
+  FPedidoController := TPedidoController.Create;
+  FClienteController := TClienteController.Create;
+  AtualizarGrid;
+end;
+
+function TfrmPrincipal.NomeCliente(CodCliente: Integer): string;
+begin
+  Result := '';
+  for var Cliente in FListaClientes do
+    if Cliente.Codigo = CodCliente then
+      Exit(Cliente.Nome);
+end;
+
+function TfrmPrincipal.PedidoSelecionado: TPedido;
+begin
+  Result := nil;
+  if not cdsPedidos.Active or cdsPedidos.IsEmpty then
+    Exit;
+
+  for var Pedido in FListaPedidos do
+    if Pedido.NumPedido = cdsPedidos.FieldByName('NumPedido').AsInteger then
+    begin
+      Result := Pedido;
+      Break;
+    end;
+end;
+
+end.

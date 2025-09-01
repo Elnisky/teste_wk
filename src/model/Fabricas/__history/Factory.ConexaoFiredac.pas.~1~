@@ -1,0 +1,22 @@
+unit Factory.ConexaoFiredac;
+
+interface
+
+uses
+  Interfaces.IConexaoFiredac,
+  Impl.ConexaoFiredac;
+
+type
+  TConexaoFactory = class
+  public
+    class function NovaConexao: IConexaoFiredac;
+  end;
+
+implementation
+
+class function TConexaoFactory.NovaConexao: IConexaoFiredac;
+begin
+  Result := TConexaoFiredac.Create;
+end;
+
+end.

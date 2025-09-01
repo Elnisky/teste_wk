@@ -1,0 +1,173 @@
+object frmClientes: TfrmClientes
+  Left = 0
+  Top = 0
+  BorderStyle = bsSingle
+  Caption = 'Cadastro de Clientes'
+  ClientHeight = 621
+  ClientWidth = 624
+  Color = clBtnFace
+  Font.Charset = DEFAULT_CHARSET
+  Font.Color = clWindowText
+  Font.Height = -12
+  Font.Name = 'Segoe UI'
+  Font.Style = []
+  Position = poOwnerFormCenter
+  OnCreate = FormCreate
+  TextHeight = 15
+  object gbxCadastroCliente: TGroupBox
+    Left = 0
+    Top = 416
+    Width = 624
+    Height = 156
+    Align = alBottom
+    Caption = '  Cadastrar  '
+    TabOrder = 0
+    Visible = False
+    object edtNome: TLabeledEdit
+      Left = 11
+      Top = 40
+      Width = 598
+      Height = 23
+      EditLabel.Width = 33
+      EditLabel.Height = 15
+      EditLabel.Caption = 'Nome'
+      TabOrder = 0
+      Text = ''
+    end
+    object edtCidade: TLabeledEdit
+      Left = 11
+      Top = 88
+      Width = 369
+      Height = 23
+      EditLabel.Width = 37
+      EditLabel.Height = 15
+      EditLabel.Caption = 'Cidade'
+      TabOrder = 1
+      Text = ''
+    end
+    object edtUF: TLabeledEdit
+      Left = 416
+      Top = 88
+      Width = 193
+      Height = 23
+      EditLabel.Width = 35
+      EditLabel.Height = 15
+      EditLabel.Caption = 'Estado'
+      TabOrder = 2
+      Text = ''
+    end
+    object btnCancelar: TButton
+      Left = 453
+      Top = 117
+      Width = 75
+      Height = 25
+      Caption = 'Cancelar'
+      TabOrder = 3
+    end
+    object btnConfirmar: TButton
+      Left = 534
+      Top = 117
+      Width = 75
+      Height = 25
+      Caption = 'Confirmar'
+      TabOrder = 4
+      OnClick = btnConfirmarClick
+    end
+  end
+  object pnlCadastro: TPanel
+    Left = 0
+    Top = 572
+    Width = 624
+    Height = 49
+    Align = alBottom
+    BevelOuter = bvNone
+    TabOrder = 1
+    ExplicitTop = 392
+    object btnIncluir: TButton
+      Left = 11
+      Top = 16
+      Width = 75
+      Height = 25
+      Caption = 'Incluir'
+      TabOrder = 0
+      OnClick = btnIncluirClick
+    end
+    object btnAlterar: TButton
+      Left = 92
+      Top = 16
+      Width = 75
+      Height = 25
+      Caption = 'Alterar'
+      TabOrder = 1
+      OnClick = btnAlterarClick
+    end
+    object btnExcluir: TButton
+      Left = 173
+      Top = 16
+      Width = 75
+      Height = 25
+      Caption = 'Excluir'
+      TabOrder = 2
+      OnClick = btnExcluirClick
+    end
+    object btnVoltar: TButton
+      Left = 534
+      Top = 16
+      Width = 75
+      Height = 25
+      Caption = 'Voltar'
+      TabOrder = 3
+      OnClick = btnVoltarClick
+    end
+  end
+  object grdClientes: TDBGrid
+    Left = 0
+    Top = 0
+    Width = 624
+    Height = 416
+    Align = alClient
+    DataSource = dsClientes
+    TabOrder = 2
+    TitleFont.Charset = DEFAULT_CHARSET
+    TitleFont.Color = clWindowText
+    TitleFont.Height = -12
+    TitleFont.Name = 'Segoe UI'
+    TitleFont.Style = []
+  end
+  object dsClientes: TDataSource
+    DataSet = cdsClientes
+    Left = 88
+    Top = 64
+  end
+  object cdsClientes: TClientDataSet
+    PersistDataPacket.Data = {
+      740000009619E0BD010000001800000004000000000003000000740006436F64
+      69676F0400010000000000044E6F6D6501004900000001000557494454480200
+      0200640006436964616465010049000000010005574944544802000200640002
+      554601004900000001000557494454480200020002000000}
+    Active = True
+    Aggregates = <>
+    Params = <>
+    Left = 160
+    Top = 64
+    object cdsClientesCodigo: TIntegerField
+      DisplayWidth = 10
+      FieldName = 'Codigo'
+    end
+    object cdsClientesNome: TStringField
+      DisplayWidth = 41
+      FieldName = 'Nome'
+      Size = 100
+    end
+    object cdsClientesCidade: TStringField
+      DisplayWidth = 41
+      FieldName = 'Cidade'
+      Size = 100
+    end
+    object cdsClientesUF: TStringField
+      DisplayWidth = 2
+      FieldName = 'UF'
+      Size = 2
+    end
+  end
+end

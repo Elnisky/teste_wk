@@ -1,0 +1,207 @@
+unit FCadastroProdutos;
+
+interface
+
+uses
+  Controller.Produto,
+  Data.DB,
+  Datasnap.DBClient,
+  Entidades.Produto,
+  System.Classes,
+  System.Generics.Collections,
+  System.SysUtils,
+  System.Variants,
+  Vcl.Controls,
+  Vcl.DBGrids,
+  Vcl.Dialogs,
+  Vcl.ExtCtrls,
+  Vcl.Forms,
+  Vcl.Graphics,
+  Vcl.Grids,
+  Vcl.Mask,
+  Vcl.NumberBox,
+  Vcl.StdCtrls,
+  Winapi.Messages,
+  Winapi.Windows;
+
+type
+  TfrmProdutos = class(TForm)
+    cdsProdutos: TClientDataSet;
+    cdsProdutosCodigo: TIntegerField;
+    gbxCadastroProdutos: TGroupBox;
+    edtDescricao: TLabeledEdit;
+    grdProdutos: TDBGrid;
+    pnlCadastro: TPanel;
+    btnIncluir: TButton;
+    btnAlterar: TButton;
+    btnExcluir: TButton;
+    btnVoltar: TButton;
+    dsProdutos: TDataSource;
+    edtPreco: TNumberBox;
+    lblPreco: TLabel;
+    cdsProdutosDescricao: TStringField;
+    cdsProdutosPreco: TFloatField;
+    btnCancelar: TButton;
+    btnConfirmar: TButton;
+    procedure FormCreate(Sender: TObject);
+    procedure btnAlterarClick(Sender: TObject);
+    procedure btnCancelarClick(Sender: TObject);
+    procedure btnConfirmarClick(Sender: TObject);
+    procedure btnExcluirClick(Sender: TObject);
+    procedure btnIncluirClick(Sender: TObject);
+    procedure btnVoltarClick(Sender: TObject);
+  private
+    FController: TProdutoController;
+    procedure AtualizarGrid;
+    procedure LimparCampos;
+    function ProdutoSelecionado: TProduto;
+
+    { Private declarations }
+  public
+    { Public declarations }
+  end;
+
+var
+  frmProdutos: TfrmProdutos;
+
+implementation
+
+{$R *.dfm}
+
+procedure TfrmProdutos.AtualizarGrid;
+begin
+  var Lista := FController.ListarProdutos;
+  cdsProdutos.Close;
+  cdsProdutos.FieldDefs.Clear;
+  cdsProdutos.FieldDefs.Add('Codigo', ftInteger);
+  cdsProdutos.FieldDefs.Add('Descricao', ftString, 100);
+  cdsProdutos.FieldDefs.Add('Preco', ftFloat);
+  cdsProdutos.CreateDataSet;
+
+  for var Produto in Lista do
+  begin
+    cdsProdutos.Append;
+    cdsProdutos.FieldByName('Codigo').AsInteger := Produto.Codigo;
+    cdsProdutos.FieldByName('Descricao').AsString := Produto.Descricao;
+    cdsProdutos.FieldByName('Preco').AsFloat := Produto.PrecoVenda;
+    cdsProdutos.Post;
+  end;
+end;
+
+procedure TfrmProdutos.btnAlterarClick(Sender: TObject);
+begin
+  Tag := 2; // alterando
+  var Produto := ProdutoSelecionado;
+  if Assigned(Produto) then
+  begin
+    Produto.Descricao := edtDescricao.Text;
+    Produto.PrecoVenda := edtPreco.Value;
+    gbxCadastroProdutos.Visible := True;
+    pnlCadastro.Enabled := False;
+    Produto.Free;
+  end;
+end;
+
+procedure TfrmProdutos.btnCancelarClick(Sender: TObject);
+begin
+  LimparCampos;
+  AtualizarGrid;
+  Tag := 0; // nada
+  gbxCadastroProdutos.Visible := False;
+  pnlCadastro.Enabled := True;
+end;
+
+procedure TfrmProdutos.btnConfirmarClick(Sender: TObject);
+var
+  Produto : TProduto;
+begin
+  case Tag of
+    1 : begin
+          Produto := TProduto.Create;
+          Produto.Descricao := edtDescricao.Text;
+          Produto.PrecoVenda := edtPreco.Value;
+          FController.SalvarProduto(Produto);
+        end;
+    2 : begin
+          Produto := ProdutoSelecionado;
+          if Assigned(Produto) then
+          begin
+            Produto.Descricao := edtDescricao.Text;
+            Produto.PrecoVenda := edtPreco.Value;
+            FController.SalvarProduto(Produto);
+            Produto.Free;
+          end;
+        end;
+    3 : begin
+          Produto := ProdutoSelecionado;
+          if Assigned(Produto) then
+          begin
+            FController.ExcluirProduto(Produto.Codigo);
+            Produto.Free;
+            AtualizarGrid;
+          end;
+        end;
+  end;
+
+  if Assigned(Produto) then
+    Produto.Free;
+
+  btnCancelarClick(Sender);
+end;
+
+procedure TfrmProdutos.btnExcluirClick(Sender: TObject);
+begin
+  Tag := 3; // excluindo
+  btnConfirmarClick(Sender);
+end;
+
+procedure TfrmProdutos.btnIncluirClick(Sender: TObject);
+begin
+  Tag := 1; // incluindo
+  gbxCadastroProdutos.Visible := True;
+  pnlCadastro.Enabled := False;
+end;
+
+procedure TfrmProdutos.btnVoltarClick(Sender: TObject);
+begin
+  Close;
+end;
+
+function TfrmProdutos.ProdutoSelecionado: TProduto;
+var
+  Codigo: Integer;
+  Lista: TObjectList<TProduto>;
+begin
+  Result := nil;
+  if not cdsProdutos.Active or cdsProdutos.IsEmpty then
+    Exit;
+
+  Codigo := cdsProdutos.FieldByName('Codigo').AsInteger;
+  Lista := FController.ListarProdutos;
+
+  if Assigned(Lista) then
+  begin
+    for var Produto in Lista do
+      if Produto.Codigo = Codigo then
+      begin
+        Result := Produto;
+        Break;
+      end;
+
+    Lista.Free;
+  end;
+end;
+
+procedure TfrmProdutos.FormCreate(Sender: TObject);
+begin
+  FController := TProdutoController.Create;
+  AtualizarGrid;
+end;
+
+procedure TfrmProdutos.LimparCampos;
+begin
+  edtDescricao.Clear;
+  edtPreco.Clear;
+end;
+
+end.

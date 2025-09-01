@@ -1,0 +1,50 @@
+unit Atributos.ORM;
+
+interface
+
+uses
+  System.Classes;
+
+type
+  TTabela = class(TCustomAttribute)
+  public
+    NomeTabela: string;
+    constructor Create(const ANomeTabela: string);
+  end;
+
+  TCampo = class(TCustomAttribute)
+  public
+    NomeCampo: string;
+    constructor Create(const ANomeCampo: string);
+  end;
+
+  TChavePrimaria = class(TCustomAttribute)
+  end;
+
+  TAutoIncremento = class(TCustomAttribute)
+  end;
+
+  TForeignKey = class(TCustomAttribute)
+  public
+    Referencia: string;
+    constructor Create(const AReferencia: string);
+  end;
+
+implementation
+
+constructor TTabela.Create(const ANomeTabela: string);
+begin
+  NomeTabela := ANomeTabela;
+end;
+
+constructor TCampo.Create(const ANomeCampo: string);
+begin
+  NomeCampo := ANomeCampo;
+end;
+
+constructor TForeignKey.Create(const AReferencia: string);
+begin
+  Referencia := AReferencia;
+end;
+
+end.

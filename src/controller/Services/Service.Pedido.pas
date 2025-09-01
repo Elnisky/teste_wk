@@ -1,0 +1,95 @@
+unit Service.Pedido;
+
+interface
+
+uses
+  Entidades.ItemPedido,
+  Entidades.Pedido,
+  Factory.Repository,
+  Persistencia.ORM,
+  System.Generics.Collections;
+
+type
+  TPedidoService = class
+  private
+    FPedidoRepo: TPersistencia<TPedido>;
+    FItemRepo: TPersistencia<TItemPedido>;
+    function CalcularTotal(Itens: TObjectList<TItemPedido>): Double;
+  public
+    constructor Create;
+    destructor Destroy; override;
+    procedure CriarPedido(Pedido: TPedido; Itens: TObjectList<TItemPedido>);
+    procedure ExcluirPedido(Pedido: TPedido);
+    function ObterTodosPedidos: TObjectList<TPedido>;
+    function ObterItensDoPedido(NumPedido: Integer): TObjectList<TItemPedido>;
+  end;
+
+implementation
+
+{ TPedidoService }
+
+constructor TPedidoService.Create;
+begin
+  FPedidoRepo := TRepositoryFactory.PedidoRepository;
+  FItemRepo := TRepositoryFactory.ItemPedidoRepository;
+end;
+
+function TPedidoService.CalcularTotal(Itens: TObjectList<TItemPedido>): Double;
+var
+  Item: TItemPedido;
+begin
+  Result := 0;
+  for Item in Itens do
+    Result := Result + Item.VlrTotal;
+end;
+
+procedure TPedidoService.CriarPedido(Pedido: TPedido; Itens: TObjectList<TItemPedido>);
+var
+  Item: TItemPedido;
+begin
+  // Calcula o total do pedido
+  Pedido.VlrTotal := CalcularTotal(Itens);
+
+  // Grava o pedido
+  Pedido.NumPedido := FPedidoRepo.Inserir(Pedido);
+
+  // Associa o número do pedido aos itens e grava cada um
+  for Item in Itens do
+  begin
+    Item.NumPedido := Pedido.NumPedido;
+    FItemRepo.Inserir(Item);
+  end;
+end;
+
+destructor TPedidoService.Destroy;
+begin
+  FPedidoRepo.Free;
+  FItemRepo.Free;
+  inherited;
+end;
+
+procedure TPedidoService.ExcluirPedido(Pedido: TPedido);
+begin
+  var Lista := ObterItensDoPedido(Pedido.NumPedido);
+  for var Item in Lista do
+    FItemRepo.Excluir(Item);
+  FPedidoRepo.Excluir(Pedido)
+end;
+
+function TPedidoService.ObterTodosPedidos: TObjectList<TPedido>;
+begin
+  Result := FPedidoRepo.ObterTodos;
+end;
+
+function TPedidoService.ObterItensDoPedido(NumPedido: Integer): TObjectList<TItemPedido>;
+var
+  Lista: TObjectList<TItemPedido>;
+begin
+  Lista := FItemRepo.ObterTodos;
+  Result := TObjectList<TItemPedido>.Create(True);
+  for var Item in Lista do
+    if Item.NumPedido = NumPedido then
+      Result.Add(Item);
+end;
+
+end.

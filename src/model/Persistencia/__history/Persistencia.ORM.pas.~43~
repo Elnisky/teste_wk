@@ -1,0 +1,258 @@
+unit Persistencia.ORM;
+
+interface
+
+uses
+  System.Classes,
+  System.Generics.Collections,
+  System.Rtti,
+  System.SysUtils,
+  System.TypInfo,
+  Atributos.ORM,
+  Impl.ConexaoFiredac,
+  Impl.QueryFiredac;
+
+type
+  TPersistencia<T: class, constructor> = class
+  private
+    FConexao: TConexaoFiredac;
+    FQuery: TQueryFiredac;
+    FContexto: TRttiContext;
+    FTipo: TRttiType;
+    destructor Destroy; override;
+    function GetNomeTabela: string;
+    function GetCamposInsert: string;
+    function GetValoresInsert(Objeto: T): string;
+    procedure SetParametrosInsert(Query: TQueryFiredac; Objeto: T);
+    procedure SetParametrosPK(Query: TQueryFiredac; Objeto: T);
+    function GetCamposSelect: string;
+    function GetWherePK: string;
+    function MapearObjeto(Query: TQueryFiredac): T;
+  public
+    constructor Create(AConexao: TConexaoFiredac;
+                       AQuery: TQueryFiredac);
+
+    function ObterTodos: TObjectList<T>;
+    procedure Inserir(Objeto: T);
+    procedure Atualizar(Objeto: T);
+    procedure Excluir(Objeto: T);
+  end;
+
+implementation
+
+uses
+  Firedac.Stan.Param;
+
+{ TPersistencia<T> }
+
+constructor TPersistencia<T>.Create(AConexao: TConexaoFiredac;
+                                    AQuery: TQueryFiredac);
+begin
+  FConexao := AConexao;
+  FQuery := AQuery;
+  FContexto := TRttiContext.Create;
+  FTipo := FContexto.GetType(T);
+end;
+
+destructor TPersistencia<T>.Destroy;
+begin
+  FConexao.Free;
+  FQuery.Free;
+  FContexto.Free;
+//  FTipo.Free;
+  inherited;
+end;
+
+function TPersistencia<T>.GetNomeTabela: string;
+var
+  Attr: TCustomAttribute;
+begin
+  Result := ''; // valor padrão
+
+  for Attr in FTipo.GetAttributes do
+  begin
+    if Attr is TTabela then
+    begin
+      Result := TTabela(Attr).NomeTabela;
+      Exit;
+    end;
+  end;
+
+  // fallback: caso não tenha [TTabela], usa o nome da classe sem o "T"
+  Result := Copy(FTipo.Name, 2, Length(FTipo.Name) - 1);
+end;
+
+function TPersistencia<T>.GetCamposInsert: string;
+var
+  Prop: TRttiProperty;
+  Campo: TCampo;
+begin
+  Result := '';
+  for Prop in FTipo.GetProperties do
+    if Prop.IsReadable and (Prop.GetAttribute<TAutoIncremento> = nil) then
+      for var Attr in Prop.GetAttributes do
+        if Attr is TCampo then
+        begin
+          Campo := TCampo(Attr);
+          Result := Result + Campo.NomeCampo + ', ';
+        end;
+  Result := Copy(Result, 1, Length(Result) - 2);
+end;
+
+function TPersistencia<T>.GetValoresInsert(Objeto: T): string;
+var
+  Prop: TRttiProperty;
+begin
+  Result := '';
+  for Prop in FTipo.GetProperties do
+    if Prop.IsReadable and (Prop.GetAttribute<TAutoIncremento> = nil) then
+      Result := Result + ':' + Prop.Name + ', ';
+  Result := Copy(Result, 1, Length(Result) - 2);
+end;
+
+procedure TPersistencia<T>.SetParametrosInsert(Query: TQueryFiredac; Objeto: T);
+var
+  Prop: TRttiProperty;
+begin
+  for Prop in FTipo.GetProperties do
+    if Prop.IsReadable and (Prop.GetAttribute<TAutoIncremento> = nil) then
+      Query.Query.ParamByName(Prop.Name).Value := Prop.GetValue(TObject(Objeto)).AsVariant;
+end;
+
+procedure TPersistencia<T>.SetParametrosPK(Query: TQueryFiredac; Objeto: T);
+var
+  Prop: TRttiProperty;
+begin
+  for Prop in FTipo.GetProperties do
+    if (Prop.GetAttribute<TChavePrimaria> <> nil) then
+      Query.Query.ParamByName('PK').Value := Prop.GetValue(TObject(Objeto)).AsVariant;
+end;
+
+procedure TPersistencia<T>.Inserir(Objeto: T);
+var
+  SQL: string;
+begin
+  SQL := Format('INSERT INTO %s (%s) VALUES (%s)', [
+    GetNomeTabela,
+    GetCamposInsert,
+    GetValoresInsert(Objeto)
+  ]);
+
+  FQuery.SetSQL(SQL);
+  SetParametrosInsert(FQuery, Objeto);
+  FQuery.ExecSQL;
+end;
+
+function TPersistencia<T>.ObterTodos: TObjectList<T>;
+var
+  SQL: string;
+begin
+  Result := TObjectList<T>.Create;
+  Result.OwnsObjects := True;
+  SQL := Format('SELECT %s FROM %s', [GetCamposSelect, GetNomeTabela]);
+
+  FQuery.SetSQL(SQL);
+  FQuery.Open;
+  while not FQuery.Query.Eof do
+  begin
+    Result.Add(MapearObjeto(FQuery));
+    FQuery.Query.Next;
+  end;
+end;
+
+function TPersistencia<T>.GetCamposSelect: string;
+var
+  Prop: TRttiProperty;
+  Campo: TCampo;
+begin
+  Result := '';
+  for Prop in FTipo.GetProperties do
+    for var Attr in Prop.GetAttributes do
+      if Attr is TCampo then
+      begin
+        Campo := TCampo(Attr);
+        Result := Result + Campo.NomeCampo + ', ';
+      end;
+  Result := Copy(Result, 1, Length(Result) - 2);
+end;
+
+function TPersistencia<T>.MapearObjeto(Query: TQueryFiredac): T;
+var
+  Obj: T;
+  Prop: TRttiProperty;
+  Campo: TCampo;
+begin
+  Obj := T.Create;
+  for Prop in FTipo.GetProperties do
+    for var Attr in Prop.GetAttributes do
+      if Attr is TCampo then
+      begin
+        Campo := TCampo(Attr);
+        Prop.SetValue(TObject(Obj),
+                      TValue.FromVariant(Query.Query.FieldByName(Campo.NomeCampo).Value));
+      end;
+  Result := Obj;
+end;
+
+procedure TPersistencia<T>.Atualizar(Objeto: T);
+var
+  SQL, SetClause: string;
+  Prop: TRttiProperty;
+  Campo: TCampo;
+  Query: TQueryFiredac;
+begin
+  SetClause := '';
+  for Prop in FTipo.GetProperties do
+    if (Prop.GetAttribute<TChavePrimaria> = nil) then
+      for var Attr in Prop.GetAttributes do
+        if Attr is TCampo then
+        begin
+          Campo := TCampo(Attr);
+          SetClause := SetClause + Format('%s = :%s, ', [Campo.NomeCampo, Prop.Name]);
+        end;
+  SetClause := Copy(SetClause, 1, Length(SetClause) - 2);
+
+  SQL := Format('UPDATE %s SET %s WHERE %s', [
+    GetNomeTabela,
+    SetClause,
+    GetWherePK
+  ]);
+
+  Query := TQueryFiredac.Create(FConexao);
+  Query.SetSQL(SQL);
+  SetParametrosInsert(Query, Objeto);
+  SetParametrosPK(Query, Objeto);
+  Query.ExecSQL;
+end;
+
+procedure TPersistencia<T>.Excluir(Objeto: T);
+var
+  SQL: string;
+begin
+  SQL := Format('DELETE FROM %s WHERE %s', [
+    GetNomeTabela,
+    GetWherePK
+  ]);
+
+  FQuery.SetSQL(SQL);
+  SetParametrosPK(FQuery, Objeto);
+  FQuery.ExecSQL;
+end;
+
+function TPersistencia<T>.GetWherePK: string;
+var
+  Prop: TRttiProperty;
+  Campo: TCampo;
+begin
+  for Prop in FTipo.GetProperties do
+    if (Prop.GetAttribute<TChavePrimaria> <> nil) then
+      for var Attr in Prop.GetAttributes do
+        if Attr is TCampo then
+        begin
+          Campo := TCampo(Attr);
+          Result := Format('%s = :PK', [Campo.NomeCampo]);
+          Exit;
+        end;
+end;
+
+end.

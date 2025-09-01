@@ -1,0 +1,23 @@
+unit Factory.QueryFiredac;
+
+interface
+
+uses
+  Interfaces.IQueryFiredac,
+  Impl.QueryFiredac,
+  Interfaces.IConexaoFiredac;
+
+type
+  TQueryFactory = class
+  public
+    class function NovaQuery(const Conexao: IConexaoFiredac): IQueryFiredac;
+  end;
+
+implementation
+
+class function TQueryFactory.NovaQuery(const Conexao: IConexaoFiredac): IQueryFiredac;
+begin
+  Result := TQueryFiredac.Create(Conexao);
+end;
+
+end.

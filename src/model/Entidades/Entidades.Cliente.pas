@@ -1,0 +1,32 @@
+unit Entidades.Cliente;
+
+interface
+
+uses
+  Atributos.ORM;
+
+type
+  [TTabela('clientes')]
+  TCliente = class
+  private
+    FCodigo: Integer;
+    FNome: string;
+    FCidade: string;
+    FUF: string;
+  public
+    [TCampo('cliCodigo'), TChavePrimaria, TAutoIncremento]
+    property Codigo: Integer read FCodigo write FCodigo;
+
+    [TCampo('cliNome')]
+    property Nome: string read FNome write FNome;
+
+    [TCampo('cliCidade')]
+    property Cidade: string read FCidade write FCidade;
+
+    [TCampo('cliUF')]
+    property UF: string read FUF write FUF;
+  end;
+
+implementation
+
+end.

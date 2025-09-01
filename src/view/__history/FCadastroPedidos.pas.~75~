@@ -1,0 +1,271 @@
+unit FCadastroPedidos;
+
+interface
+
+uses
+  Controller.Cliente,
+  Controller.Pedido,
+  Controller.Produto,
+  Data.DB,
+  Datasnap.DBClient,
+  Entidades.Cliente,
+  Entidades.ItemPedido,
+  Entidades.Pedido,
+  Entidades.Produto,
+  System.Classes,
+  System.Generics.Collections,
+  System.StrUtils,
+  System.SysUtils,
+  System.UITypes,
+  System.Variants,
+  Vcl.Controls,
+  Vcl.DBGrids,
+  Vcl.Dialogs,
+  Vcl.ExtCtrls,
+  Vcl.Forms,
+  Vcl.Graphics,
+  Vcl.Grids,
+  Vcl.Mask,
+  Vcl.StdCtrls,
+  Winapi.Messages,
+  Winapi.Windows;
+
+type
+  TfrmPedidos = class(TForm)
+    pnlCadastro: TPanel;
+    btnIncluir: TButton;
+    btnAlterar: TButton;
+    btnExcluir: TButton;
+    btnVoltar: TButton;
+    gbxCadastro: TGroupBox;
+    edtCodigo: TLabeledEdit;
+    edtQuantidade: TLabeledEdit;
+    lblDescricao: TLabel;
+    btnConfirmar: TButton;
+    btnCancelar: TButton;
+    grdPedidos: TDBGrid;
+    cdsItensPedido: TClientDataSet;
+    cdsItensPedidoCodigo: TIntegerField;
+    dsItensPedido: TDataSource;
+    cdsItensPedidoDescricao: TStringField;
+    cdsItensPedidoQuantidade: TIntegerField;
+    cdsItensPedidoVlrUnitario: TFloatField;
+    cdsItensPedidoVlrTotal: TFloatField;
+    cmbCliente: TComboBox;
+    lblCliente: TLabel;
+    btnGravar: TButton;
+    lblTotal: TLabel;
+    cdsItensPedidoTotal: TAggregateField;
+    procedure FormCreate(Sender: TObject);
+    procedure FormClose(Sender: TObject; var Action: TCloseAction);
+    procedure btnIncluirClick(Sender: TObject);
+    procedure edtCodigoExit(Sender: TObject);
+    procedure btnCancelarClick(Sender: TObject);
+    procedure btnConfirmarClick(Sender: TObject);
+    procedure FormKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
+    procedure grdPedidosKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
+    procedure btnVoltarClick(Sender: TObject);
+    procedure btnExcluirClick(Sender: TObject);
+    procedure btnGravarClick(Sender: TObject);
+    procedure cdsItensPedidoBeforeEdit(DataSet: TDataSet);
+  private
+    FPedidoController: TPedidoController;
+    FProdutoController: TProdutoController;
+    FClienteController: TClienteController;
+    FItens: TObjectList<TItemPedido>;
+    FListaProdutos: TObjectList<TProduto>;
+    FListaClientes: TObjectList<TCliente>;
+
+    function BuscarProduto(const Codigo: Integer): TProduto;
+    procedure AtualizarClientes;
+    procedure LimparCamposProduto;
+    { Private declarations }
+  public
+    { Public declarations }
+  end;
+
+var
+  frmPedidos: TfrmPedidos;
+
+implementation
+
+{$R *.dfm}
+
+procedure TfrmPedidos.AtualizarClientes;
+begin
+  cmbCLiente.Items.Clear;
+  FListaClientes := FClienteController.ListarClientes;
+  for var Cliente in FListaClientes do
+    cmbCLiente.Items.AddObject(Format('%d - %s', [Cliente.Codigo, Cliente.Nome]), TObject(Cliente.Codigo));
+end;
+
+procedure TfrmPedidos.btnCancelarClick(Sender: TObject);
+begin
+  LimparCamposProduto;
+  gbxCadastro.Visible := False;
+end;
+
+procedure TfrmPedidos.btnConfirmarClick(Sender: TObject);
+begin
+  if StrToIntDef(edtQuantidade.Text, 0) <= 0 then
+    raise Exception.Create('Quantidade inválida.');
+
+  var Produto := BuscarProduto(StrToIntDef(edtCodigo.Text, 0));
+  if not Assigned(Produto) then
+    raise Exception.Create('Produto não encontrado.');
+
+  var Item := TItemPedido.Create;
+  Item.ProCodigo := Produto.Codigo;
+  Item.Quantidade := StrToIntDef(edtQuantidade.Text, 0);
+  Item.VlrUnitario := Produto.PrecoVenda;
+  Item.VlrTotal := Item.Quantidade * Produto.PrecoVenda;
+
+  FItens.Add(Item);
+
+  if edtCodigo.Enabled then
+    cdsItensPedido.Append
+  else
+    cdsItensPedido.Edit;
+
+  cdsItensPedidoCodigo.AsInteger := Item.ProCodigo;
+  cdsItensPedidoDescricao.AsString := Produto.Descricao;
+  cdsItensPedidoQuantidade.AsInteger := Item.Quantidade;
+  cdsItensPedidoVlrUnitario.AsFloat := Produto.PrecoVenda;
+  cdsItensPedidoVlrTotal.AsFloat := Item.VlrTotal;
+  cdsItensPedido.Post;
+
+  cdsItensPedido.AggregatesActive := False;
+  cdsItensPedido.AggregatesActive := True;
+  lblTotal.Caption := 'TOTAL: ' + FormatFloat('R$ #,##0.00', StrToFloatDef(cdsItensPedido.FieldByName('Total').AsString, 0));
+
+  btnCancelarClick(Sender);
+end;
+
+procedure TfrmPedidos.btnExcluirClick(Sender: TObject);
+begin
+  if not cdsItensPedido.Active or cdsItensPedido.IsEmpty then
+    Exit;
+
+  for var Item in FItens do
+    if Item.ProCodigo = cdsItensPedidoCodigo.AsInteger then
+    begin
+      FItens.Remove(Item);
+      cdsItensPedido.Delete;
+    end;
+end;
+
+procedure TfrmPedidos.btnGravarClick(Sender: TObject);
+begin
+  if cmbCliente.ItemIndex = -1 then
+    raise Exception.Create('Selecione um cliente.');
+
+  var Pedido := TPedido.Create;
+  Pedido.CliCodigo := Integer(cmbCliente.Items.Objects[cmbCliente.ItemIndex]);
+  Pedido.DataEmissao := Now;
+
+  FPedidoController.CriarPedido(Pedido, FItens);
+  ShowMessage('Pedido gravado com sucesso!');
+  cdsItensPedido.EmptyDataSet;
+  FItens.Clear;
+  Pedido.Free;
+end;
+
+procedure TfrmPedidos.btnIncluirClick(Sender: TObject);
+begin
+  if Sender = btnAlterar then
+  begin
+    edtCodigo.Enabled := False;
+    edtCodigo.Text := cdsItensPedidoCodigo.AsString;
+    edtQuantidade.Text := cdsItensPedidoQuantidade.AsString;
+  end;
+  gbxCadastro.Caption := IfThen(Sender = btnAlterar, '  Alterando  ', '  Incluindo  ');
+  gbxCadastro.Visible := True;
+end;
+
+procedure TfrmPedidos.btnVoltarClick(Sender: TObject);
+begin
+  Close;
+end;
+
+function TfrmPedidos.BuscarProduto(const Codigo: Integer): TProduto;
+begin
+  Result := nil;
+  for var Produto in FListaProdutos do
+    if Produto.Codigo = Codigo then
+    begin
+      Result := Produto;
+      Break;
+    end;
+end;
+
+procedure TfrmPedidos.cdsItensPedidoBeforeEdit(DataSet: TDataSet);
+begin
+//  for var i := 0 to Pred(cdsItensPedido.FieldCount) do
+//    cdsItensPedido.Fields[i].ReadOnly := cdsItensPedido.Fields[i].FieldName <> 'Quantidade';
+end;
+
+procedure TfrmPedidos.edtCodigoExit(Sender: TObject);
+begin
+  var Produto := BuscarProduto(StrToIntDef(edtCodigo.Text, 0));
+  if not Assigned(Produto) then
+  begin
+    edtCodigo.SelectAll;
+    edtCodigo.SetFocus;
+    raise Exception.Create('Produto não encontrado.');
+  end
+  else
+    lblDescricao.Caption := Produto.Descricao;
+end;
+
+procedure TfrmPedidos.FormClose(Sender: TObject; var Action: TCloseAction);
+begin
+  FPedidoController.Free;
+  FProdutoController.Free;
+  FClienteController.Free;
+  FItens.Free;
+
+  if Assigned(FListaProdutos) then
+    FListaProdutos.Free;
+
+  if Assigned(FListaClientes) then
+    FListaClientes.Free;
+end;
+
+procedure TfrmPedidos.FormCreate(Sender: TObject);
+begin
+  lblDescricao.Caption := '';
+  FPedidoController := TPedidoController.Create;
+  FProdutoController := TProdutoController.Create;
+  FClienteController := TClienteController.Create;
+  FItens := TObjectList<TItemPedido>.Create;
+  FItens.OwnsObjects := True;
+  FListaProdutos := FProdutoController.ListarProdutos;
+  AtualizarClientes;
+end;
+
+procedure TfrmPedidos.FormKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
+begin
+  case Key of
+    VK_UP, VK_DOWN : grdPedidos.SetFocus;
+  end;
+end;
+
+procedure TfrmPedidos.grdPedidosKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
+begin
+  case Key of
+    VK_RETURN: btnAlterar.Click;
+
+    VK_DELETE: begin
+                 if MessageDlg('Deseja realmente excluir este item?', mtConfirmation, [mbYes, mbNo], 0) = mrYes then
+                   btnExcluir.Click;
+               end;
+  end;
+end;
+
+procedure TfrmPedidos.LimparCamposProduto;
+begin
+  edtCodigo.Clear;
+  edtQuantidade.Clear;
+end;
+
+end.
