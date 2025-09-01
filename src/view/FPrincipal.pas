@@ -44,10 +44,12 @@ type
     cdsPedidosVlrTotal: TFloatField;
     btnAbrirPedido: TButton;
     btnRemoverPedido: TButton;
+    btnNovoPedido: TButton;
     procedure FormCreate(Sender: TObject);
     procedure FormClose(Sender: TObject; var Action: TCloseAction);
     procedure btnAbrirPedidoClick(Sender: TObject);
     procedure btnRemoverPedidoClick(Sender: TObject);
+    procedure btnNovoPedidoClick(Sender: TObject);
   private
     FPedidoController: TPedidoController;
     FClienteController: TClienteController;
@@ -68,6 +70,7 @@ var
 implementation
 
 uses
+  FCadastroPedidos,
   FVisualizarPedido;
 
 {$R *.dfm}
@@ -110,6 +113,17 @@ begin
     finally
       FreeAndNil(frmVisualizarPedido)
     end;
+  end;
+end;
+
+procedure TfrmPrincipal.btnNovoPedidoClick(Sender: TObject);
+begin
+  Application.CreateForm(TfrmPedidos, frmPedidos);
+  try
+    frmPedidos.ShowModal;
+    AtualizarGrid;
+  finally
+    FreeAndNil(frmPedidos);
   end;
 end;
 

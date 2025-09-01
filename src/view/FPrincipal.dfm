@@ -1,6 +1,7 @@
 object frmPrincipal: TfrmPrincipal
   Left = 0
   Top = 0
+  BorderStyle = bsSingle
   Caption = 'Pedidos'
   ClientHeight = 543
   ClientWidth = 696
@@ -41,7 +42,7 @@ object frmPrincipal: TfrmPrincipal
       696
       47)
     object btnAbrirPedido: TButton
-      Left = 11
+      Left = 491
       Top = 14
       Width = 94
       Height = 25
@@ -52,7 +53,7 @@ object frmPrincipal: TfrmPrincipal
       OnClick = btnAbrirPedidoClick
     end
     object btnRemoverPedido: TButton
-      Left = 111
+      Left = 591
       Top = 14
       Width = 94
       Height = 25
@@ -62,12 +63,23 @@ object frmPrincipal: TfrmPrincipal
       TabOrder = 1
       OnClick = btnRemoverPedidoClick
     end
+    object btnNovoPedido: TButton
+      Left = 11
+      Top = 14
+      Width = 94
+      Height = 25
+      Anchors = [akLeft, akBottom]
+      Caption = 'Novo pedido'
+      TabOrder = 2
+      OnClick = btnNovoPedidoClick
+    end
   end
   object mnuPrincipal: TMainMenu
     Left = 40
     Top = 56
     object mnuCadastros: TMenuItem
       Caption = 'Cadastros'
+      Visible = False
       object mnuCadastroClientes: TMenuItem
         Caption = 'Cadastro de Clientes'
       end
