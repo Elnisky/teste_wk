@@ -49,7 +49,7 @@ begin
   FConexao.Params.Values['Server']    := FIniFIle.ReadString('ESTACAO', 'SERVIDOR', '10.0.0.108');
   FConexao.Params.Values['Database']  := FIniFIle.ReadString('ESTACAO', 'DATABASE', 'teste_wk');
   FConexao.Params.Values['User_Name'] := FIniFIle.ReadString('ESTACAO', 'USUARIO', 'admin');
-  FConexao.Params.Values['Password']  := FIniFIle.ReadString('ESTACAO', 'SENHA', 'teste');
+  FConexao.Params.Values['Password']  := FIniFIle.ReadString('ESTACAO', 'SENHA', 'XXXXXX');
   FConexao.Params.Values['Port']      := FIniFIle.ReadString('ESTACAO', 'PORTA', '3306');
   FConexao.LoginPrompt                := False;
   FConexao.Connected                  := True;
